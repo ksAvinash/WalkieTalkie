@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background"
+    tools:context=".UserSignup">
+
+        <ImageView
+            android:layout_width="150dp"
+            android:layout_height="150dp"
+            android:src="@drawable/dummy_logo"
+            android:layout_centerHorizontal="true"
+            android:id="@+id/app_logo"
+            />
+
+        <it.justdevelop.walkietalkie.helpers.fonts.sans_pro_bold
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Join the Community"
+            android:textSize="18sp"
+            android:layout_below="@+id/app_logo"
+            android:layout_centerHorizontal="true"
+            android:id="@+id/join_the_community"
+            />
+
+        <it.justdevelop.walkietalkie.helpers.fonts.sans_pro
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/signup_email"
+            android:layout_marginTop="20dp"
+            android:layout_marginLeft="20dp"
+            android:textSize="20sp"
+            android:layout_below="@+id/join_the_community"
+            android:text="hello@gmail.com"
+            />
+
+
+        <EditText
+            android:inputType="textPersonName"
+            android:layout_below="@+id/signup_email"
+            android:layout_marginTop="20dp"
+            android:layout_marginLeft="20dp"
+            android:layout_marginRight="20dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="username"
+            android:id="@+id/signup_username"
+            />
+
+
+        <EditText
+            android:inputType="phone"
+            android:layout_below="@+id/signup_username"
+            android:layout_marginTop="20dp"
+            android:layout_marginLeft="20dp"
+            android:layout_marginRight="20dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="phone number"
+            android:id="@+id/signup_phoneno"
+            />
+
+
+        <Button
+            android:textColor="#ffffff"
+            android:layout_marginTop="30dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="sign up"
+            android:background="@drawable/rounded_orange_button"
+            android:layout_below="@+id/signup_phoneno"
+            android:layout_centerHorizontal="true"
+            android:id="@+id/signup_button"
+            />
+
+</RelativeLayout>

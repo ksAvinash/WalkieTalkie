@@ -1,0 +1,59 @@
+{
+  "project_info": {
+    "project_number": "934699000812",
+    "firebase_url": "https://walkietalkie-e02fb.firebaseio.com",
+    "project_id": "walkietalkie-e02fb",
+    "storage_bucket": "walkietalkie-e02fb.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:934699000812:android:5221ca7bce82389a",
+        "android_client_info": {
+          "package_name": "it.justdevelop.walkietalkie"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "934699000812-enbffslnjefpb6a5t1ib2g0ehu6oq7mp.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "it.justdevelop.walkietalkie",
+            "certificate_hash": "14aa962163f64a4def80d5940b9615d68c53c342"
+          }
+        },
+        {
+          "client_id": "934699000812-eaa6iq7bneosg8el3ej9a5apddh89l3u.apps.googleusercontent.com",
+          "client_type": 3
+        },
+        {
+          "client_id": "934699000812-eaa6iq7bneosg8el3ej9a5apddh89l3u.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD2R60ZtYkvCouJsP6WKDXkbq-yfzXnnHU"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "934699000812-eaa6iq7bneosg8el3ej9a5apddh89l3u.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

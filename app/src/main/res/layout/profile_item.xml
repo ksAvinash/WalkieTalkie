@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_margin="4dp"
+    android:layout_height="wrap_content">
+
+    <ImageView
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:id="@+id/profile_pic"
+        android:src="@drawable/profile_pic_default"
+        />
+
+    <it.justdevelop.walkietalkie.helpers.fonts.sans_pro
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Contact Name 1"
+        android:textSize="20sp"
+        android:layout_toRightOf="@+id/profile_pic"
+        android:layout_margin="25dp"
+        android:id="@+id/profile_username"
+        />
+
+
+    <Button
+        android:layout_alignParentEnd="true"
+        android:layout_width="80dp"
+        android:layout_height="30dp"
+        android:textSize="12sp"
+        android:layout_margin="15dp"
+        android:text="INVITE"
+        android:layout_centerVertical="true"
+        android:background="@drawable/rounded_orange_button"
+        android:id="@+id/invite_request"
+        android:textColor="@color/whiteColor"
+        />
+</RelativeLayout>
+
+
