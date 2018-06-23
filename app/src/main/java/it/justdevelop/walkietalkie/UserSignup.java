@@ -48,11 +48,18 @@ public class UserSignup extends AppCompatActivity {
     boolean isFetchingPhoneNumbers = false;
     private String LOG_TAG = " : signup :  ";
     private static final String APP_LOG_TAG = "WalkieTalkie2018";
-
+    private static GoogleSignInAccount myAccount;
     Context context;
     FirebaseFirestore db = null;
     CollectionReference collection_ref;
     ProgressDialog progressDialog;
+
+    public UserSignup() {
+    }
+
+    UserSignup(GoogleSignInAccount myAccount){
+        this.myAccount = myAccount;
+    }
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -118,7 +125,7 @@ public class UserSignup extends AppCompatActivity {
                     @Override
                     public void onSuccess(Void aVoid) {
                         db.collection("quick_base").document("references").update( email.replace(".","_"), phoneno);
-                        saveUserDetails(email, phoneno);
+                        firebaseAuthWithGoogle(email, phoneno);
                     }
                 })
                 .addOnFailureListener(new OnFailureListener() {
@@ -131,6 +138,33 @@ public class UserSignup extends AppCompatActivity {
                 });
     }
 
+
+    private void firebaseAuthWithGoogle(final String email, final String phoneno) {
+        FirebaseAuth mAuth = FirebaseAuth.getInstance();
+
+        progressDialog.setCancelable(false);
+        progressDialog.setMessage("authenticating user");
+        progressDialog.show();
+
+        AuthCredential credential = GoogleAuthProvider.getCredential(myAccount.getIdToken(), null);
+        mAuth.signInWithCredential(credential)
+                .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+                    @Override
+                    public void onComplete(@NonNull Task<AuthResult> task) {
+                        if (task.isSuccessful()) {
+                            Log.d(APP_LOG_TAG, LOG_TAG+ "Firebase auth successful");
+                            saveUserDetails(email, phoneno);
+                        } else {
+                            Log.w(APP_LOG_TAG, LOG_TAG+ "signInWithCredential:failure", task.getException());
+                            Snackbar.make(findViewById(R.id.google_signin_activity), "Authentication Failed.", Snackbar.LENGTH_SHORT).show();
+                            if(progressDialog.isShowing())
+                                progressDialog.dismiss();
+
+                        }
+
+                    }
+                });
+    }
 
 
     private void saveUserDetails(String email, String phoneno){
@@ -148,7 +182,6 @@ public class UserSignup extends AppCompatActivity {
 
 
     private void jumpToMainActivity(){
-
         Intent intent = new Intent(UserSignup.this, MainActivity.class);
         startActivity(intent);
         finish();

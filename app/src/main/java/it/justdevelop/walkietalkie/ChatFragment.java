@@ -1,14 +1,21 @@
 package it.justdevelop.walkietalkie;
 
 
+import android.Manifest;
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
+import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -31,6 +38,7 @@ import java.util.List;
 
 import javax.annotation.Nullable;
 
+import it.justdevelop.walkietalkie.helpers.FirestoreHelper;
 import it.justdevelop.walkietalkie.helpers.SQLiteDatabaseHelper;
 import it.justdevelop.walkietalkie.helpers.profile_object;
 
@@ -45,6 +53,7 @@ public class ChatFragment extends Fragment {
         // Required empty public constructor
     }
     private static final String APP_LOG_TAG = "WalkieTalkie2018";
+    final int MY_PERMISSIONS_REQUEST_READ_CONTACTS = 500;
 
     private View view;
     private FirebaseFirestore db;
@@ -54,6 +63,7 @@ public class ChatFragment extends Fragment {
     private List<profile_object> contactAdapters = new ArrayList<>();
     SQLiteDatabaseHelper helper;
     DocumentReference backendContactsListReference;
+    TextView permission_denied_text;
 
 
     String LOG_TAG = " : ChatFragment :  ";
@@ -61,12 +71,23 @@ public class ChatFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         view =  inflater.inflate(R.layout.fragment_chat, container, false);
-
         initializeViews();
+
+
+        if(!isContactsPermissionProvided()){
+            requestContactsPermission();
+        }else {
+            fetchContacts();
+        }
 
         return view;
     }
 
+
+
+    private boolean isContactsPermissionProvided(){
+        return ContextCompat.checkSelfPermission(getActivity(), android.Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED;
+    }
 
     private void initializeViews(){
         context = getActivity().getApplicationContext();
@@ -76,8 +97,6 @@ public class ChatFragment extends Fragment {
 
         chatList = view.findViewById(R.id.chatList);
         helper = new SQLiteDatabaseHelper(context);
-
-        fetchContacts();
 
         db = FirebaseFirestore.getInstance();
 
@@ -105,6 +124,91 @@ public class ChatFragment extends Fragment {
             }
         });
     }
+
+
+    private void requestContactsPermission(){
+        Log.d(APP_LOG_TAG, LOG_TAG+"Request Contacts permission!");
+
+        if (ActivityCompat.shouldShowRequestPermissionRationale(getActivity(),
+                Manifest.permission.READ_CONTACTS)) {
+
+            final AlertDialog.Builder builder;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                builder = new AlertDialog.Builder(getActivity(), android.R.style.Theme_Material_Dialog_Alert);
+            } else {
+                builder = new AlertDialog.Builder(getActivity());
+            }
+            builder.setTitle("Contacts permissions needed")
+                    .setCancelable(false)
+                    .setMessage("Allow contacts permissions to start Walkie Talkie conversations")
+                    .setPositiveButton("Sure", new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int which) {
+                            ActivityCompat.requestPermissions(getActivity(),
+                                    new String[]{Manifest.permission.READ_CONTACTS},
+                                    MY_PERMISSIONS_REQUEST_READ_CONTACTS);
+                        }
+                    })
+                    .setNegativeButton("Nope", new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.dismiss();
+                        }
+                    })
+                    .show();
+
+        } else {
+            ActivityCompat.requestPermissions(getActivity(),
+                    new String[]{Manifest.permission.READ_CONTACTS},
+                    MY_PERMISSIONS_REQUEST_READ_CONTACTS);
+        }
+    }
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           @NonNull String permissions[], @NonNull  int[] grantResults) {
+        Log.i(APP_LOG_TAG, LOG_TAG+"permission results invoked");
+
+        switch (requestCode) {
+            case MY_PERMISSIONS_REQUEST_READ_CONTACTS: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    // permission was granted, yay! Do the contacts read things now!
+
+                    FirestoreHelper helper = new FirestoreHelper();
+                    helper.refreshContactStates(context);
+
+                    fetchContacts();
+                } else {
+                    chatList.setVisibility(View.GONE);
+                    permission_denied_text.setVisibility(View.VISIBLE);
+                    permission_denied_text.setText("Contacts permissions missing");
+
+                }
+            }
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

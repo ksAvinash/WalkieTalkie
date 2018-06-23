@@ -1,9 +1,13 @@
 package it.justdevelop.walkietalkie;
 
 
+import android.Manifest;
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
@@ -48,14 +52,16 @@ public class ContactsFragment extends Fragment {
 
     View view;
     Context context;
-    final int MY_PERMISSIONS_REQUEST_READ_CONTACTS = 7005;
+    final int MY_PERMISSIONS_REQUEST_READ_CONTACTS = 902;
     String LOG_TAG = " : ContactFetch :  ";
     List<profile_object> contactsAdapter = new ArrayList<>();
     ListView contactList;
     FirebaseFirestore db;
     DocumentReference backendContactListReference;
     SQLiteDatabaseHelper helper;
+    TextView permission_denied_text;
     private static final String APP_LOG_TAG = "WalkieTalkie2018";
+
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -75,7 +81,7 @@ public class ContactsFragment extends Fragment {
     private void initializeViews(){
         context = getActivity().getApplicationContext();
         db = FirebaseFirestore.getInstance();
-
+        permission_denied_text = view.findViewById(R.id.permission_denied_text);
         contactList = view.findViewById(R.id.contactsList);
         helper = new SQLiteDatabaseHelper(context);
 
@@ -105,34 +111,68 @@ public class ContactsFragment extends Fragment {
     }
 
 
-        private boolean isContactsPermissionProvided(){
+    private boolean isContactsPermissionProvided(){
         return ContextCompat.checkSelfPermission(getActivity(), android.Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED;
     }
 
     private void requestContactsPermission(){
         Log.d(APP_LOG_TAG, LOG_TAG+"Request Contacts permission!");
-        ActivityCompat.requestPermissions(getActivity(),
-                new String[]{android.Manifest.permission.READ_CONTACTS},
-                MY_PERMISSIONS_REQUEST_READ_CONTACTS);
-    }
 
+        if (ActivityCompat.shouldShowRequestPermissionRationale(getActivity(),
+                Manifest.permission.READ_CONTACTS)) {
+
+            final AlertDialog.Builder builder;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                builder = new AlertDialog.Builder(getActivity(), android.R.style.Theme_Material_Dialog_Alert);
+            } else {
+                builder = new AlertDialog.Builder(getActivity());
+            }
+            builder.setTitle("Contacts permissions needed")
+                .setCancelable(false)
+                .setMessage("Allow contacts permissions to start Walkie Talkie conversations")
+                .setPositiveButton("Sure", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        ActivityCompat.requestPermissions(getActivity(),
+                                new String[]{Manifest.permission.READ_CONTACTS},
+                                MY_PERMISSIONS_REQUEST_READ_CONTACTS);
+                    }
+                })
+                .setNegativeButton("Nope", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                })
+                .show();
+
+        } else {
+            ActivityCompat.requestPermissions(getActivity(),
+                    new String[]{Manifest.permission.READ_CONTACTS},
+                    MY_PERMISSIONS_REQUEST_READ_CONTACTS);
+        }
+    }
     @Override
     public void onRequestPermissionsResult(int requestCode,
-                                           @NonNull String permissions[], @NonNull int[] grantResults) {
+                                           @NonNull String permissions[], @NonNull  int[] grantResults) {
+        Log.i(APP_LOG_TAG, LOG_TAG+"permission results invoked");
+
         switch (requestCode) {
             case MY_PERMISSIONS_REQUEST_READ_CONTACTS: {
+                // If request is cancelled, the result arrays are empty.
                 if (grantResults.length > 0
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    Log.i(APP_LOG_TAG, LOG_TAG+"contacts permission enabled");
-                    FirestoreHelper helper = new FirestoreHelper();
-                    helper.refreshContactStates(context);
+                        // permission was granted, yay! Do the contacts read things now!
 
-                    fetchContacts();
+                        FirestoreHelper helper = new FirestoreHelper();
+                        helper.refreshContactStates(context);
+
+                        fetchContacts();
                 } else {
-                    Toast.makeText(context,"Sorry cannot proceed without contacts", Toast.LENGTH_LONG).show();
+                    contactList.setVisibility(View.GONE);
+                    permission_denied_text.setVisibility(View.VISIBLE);
+                    permission_denied_text.setText("Contacts permissions missing");
+
                 }
             }
-
         }
     }
 

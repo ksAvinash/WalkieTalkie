@@ -152,7 +152,7 @@ public class GoogleSignInActivity extends AppCompatActivity {
                                     if(documentSnapshot.exists()){
                                         firebaseAuthWithGoogle(account, documentSnapshot.getString("email"), documentSnapshot.getString("bio"), phoneno, documentSnapshot.getString("profile_pic"));
                                     }else {
-                                        jumpToSignUpActivity();
+                                        jumpToSignUpActivity(account);
                                         Log.w(APP_LOG_TAG, LOG_TAG+"User was not found!");
                                     }
                                 }
@@ -165,7 +165,7 @@ public class GoogleSignInActivity extends AppCompatActivity {
                             });
 
                         }else{
-                            jumpToSignUpActivity();
+                            jumpToSignUpActivity(account);
                         }
                     } else {
                         Log.w(APP_LOG_TAG, LOG_TAG+"Error getting quick_base documents.", task.getException());
@@ -209,15 +209,14 @@ public class GoogleSignInActivity extends AppCompatActivity {
         finish();
     }
 
-    private void jumpToSignUpActivity(){
+    private void jumpToSignUpActivity(GoogleSignInAccount account){
+        new UserSignup(account);
         if(progressDialog.isShowing())
             progressDialog.dismiss();
 
         Intent intent = new Intent(GoogleSignInActivity.this, UserSignup.class);
-
         Bundle bundle = new Bundle();
         bundle.putString("email", email);
-
         intent.putExtras(bundle);
         startActivity(intent);
         finish();
