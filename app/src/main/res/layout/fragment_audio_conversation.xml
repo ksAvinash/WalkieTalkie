@@ -9,24 +9,26 @@
 
 
     <Button
+        android:layout_margin="30dp"
         android:id="@+id/holdToRecordButton"
-        android:layout_width="140dp"
-        android:layout_height="140dp"
-        android:layout_gravity="center"
-        android:text="Hold to Record"
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:layout_gravity="center|bottom"
+        android:text="RECORD"
         android:background="@drawable/rounded_yellow_button"
         android:textColor="@color/whiteColor"
-        android:textSize="20sp"
+        android:textSize="16sp"
         />
 
-
-
-    <Button
+    <it.justdevelop.walkietalkie.helpers.fonts.sans_pro_bold
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="test"
-        android:id="@+id/test"
+        android:layout_gravity="center"
+        android:textSize="22sp"
+        android:id="@+id/permission_denied_text"
+        android:visibility="gone"
         />
+
 
 
 </FrameLayout>

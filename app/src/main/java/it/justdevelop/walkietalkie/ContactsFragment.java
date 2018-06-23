@@ -135,6 +135,7 @@ public class ContactsFragment extends Fragment {
                         ActivityCompat.requestPermissions(getActivity(),
                                 new String[]{Manifest.permission.READ_CONTACTS},
                                 MY_PERMISSIONS_REQUEST_READ_CONTACTS);
+                        dialog.dismiss();
                     }
                 })
                 .setNegativeButton("Nope", new DialogInterface.OnClickListener() {

@@ -94,7 +94,7 @@ public class ChatFragment extends Fragment {
         SharedPreferences sharedPreferences = context.getSharedPreferences("wk_v1", Context.MODE_PRIVATE);
         email = sharedPreferences.getString("email", "hello@123.com");
         final String my_phoneno = sharedPreferences.getString("phoneno","");
-
+        permission_denied_text = view.findViewById(R.id.permission_denied_text);
         chatList = view.findViewById(R.id.chatList);
         helper = new SQLiteDatabaseHelper(context);
 
@@ -146,6 +146,7 @@ public class ChatFragment extends Fragment {
                             ActivityCompat.requestPermissions(getActivity(),
                                     new String[]{Manifest.permission.READ_CONTACTS},
                                     MY_PERMISSIONS_REQUEST_READ_CONTACTS);
+                            dialog.dismiss();
                         }
                     })
                     .setNegativeButton("Nope", new DialogInterface.OnClickListener() {

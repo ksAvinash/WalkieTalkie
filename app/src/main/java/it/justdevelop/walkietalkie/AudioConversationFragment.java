@@ -1,15 +1,22 @@
 package it.justdevelop.walkietalkie;
 
 
+import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.media.MediaPlayer;
 import android.media.MediaRecorder;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
+import android.support.v4.content.ContextCompat;
 import android.util.Base64;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -37,6 +44,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.HashMap;
 
+import it.justdevelop.walkietalkie.helpers.FirestoreHelper;
+
 
 /**
  * A simple {@link Fragment} subclass.
@@ -55,106 +64,146 @@ public class AudioConversationFragment extends Fragment {
     String my_phone;
     String document_path;
     String LOG_TAG = " : AudioConversation :  ";
-    Button holdToRecordButton, test;
+    Button holdToRecordButton;
     private static final int RECORD_TIMEOUT = 15000;
     String mFileName = null;
     FirebaseFirestore db;
     private static final String APP_LOG_TAG = "WalkieTalkie2018";
-
+    final int MY_PERMISSIONS_REQUEST_RECORD_AUDIO = 854;
+    TextView permission_denied_text;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         view =  inflater.inflate(R.layout.fragment_audio_conversation, container, false);
-
         initializeViews();
+
+
+        if(!isRecordAudioPermissionProvided())
+            requestRecordAudioPermission();
         return view;
     }
+
+
+
+
 
 
     @SuppressLint("ClickableViewAccessibility")
     private void initializeViews(){
         context = getActivity().getApplicationContext();
-
         Bundle bundle = getArguments();
         dest_phone = bundle.getString("dest_number");
         dest_name = bundle.getString("dest_name");
         dest_profile_pic = bundle.getString("dest_profile_pic");
-
-
         db = FirebaseFirestore.getInstance();
-
-
         SharedPreferences sharedPreferences = context.getSharedPreferences("wt_v1",Context.MODE_PRIVATE);
         my_phone = sharedPreferences.getString("phoneno","");
+        permission_denied_text = view.findViewById(R.id.permission_denied_text);
+
 
         if(Long.parseLong(dest_phone) > Long.parseLong(my_phone)){
             document_path = dest_phone+"_"+my_phone;
         }else{
             document_path = my_phone+"_"+dest_phone;
         }
-
         mFileName = context.getExternalCacheDir().getAbsolutePath()+"/wt.3gp";
         Log.i(APP_LOG_TAG, LOG_TAG+"mFileName : "+mFileName);
 
 
         holdToRecordButton = view.findViewById(R.id.holdToRecordButton);
+
         holdToRecordButton.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
-                if(event.getAction() == MotionEvent.ACTION_DOWN){
-                    startRecording();
-                }else if(event.getAction() == MotionEvent.ACTION_UP){
-                    stopRecording();
+                if(isRecordAudioPermissionProvided()){
+                    if(event.getAction() == MotionEvent.ACTION_DOWN){
+                        startRecording();
+                    }else if(event.getAction() == MotionEvent.ACTION_UP){
+                        stopRecording();
+                    }
                 }
                 return false;
             }
         });
 
 
-        Log.i(APP_LOG_TAG, LOG_TAG+"audio conversation document path : "+document_path);
 
-        setAudioMessagesListener();
+    }
 
-        test = view.findViewById(R.id.test);
-        test.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                db.collection("/conversations/9449634042/9880430068/").document("file").get()
-                        .addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
-                            @Override
-                            public void onSuccess(DocumentSnapshot documentSnapshot) {
-                                Log.i("CRITICAL", "Got the string");
-                                String voice_string = documentSnapshot.getString("audio");
-                                byte[] bytes = Base64.decode(voice_string, Base64.DEFAULT);
+    private boolean isRecordAudioPermissionProvided(){
+        return ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
+    }
 
-                                try (FileOutputStream fos = new FileOutputStream(mFileName)) {
-                                    fos.write(bytes);
-                                } catch (FileNotFoundException e) {
-                                    e.printStackTrace();
-                                } catch (IOException e) {
-                                    e.printStackTrace();
-                                }
-                                Log.i("CRITICAL", "Writing to file complete");
 
-                                MediaPlayer mPlayer = new MediaPlayer();
-                                try {
-                                    mPlayer.setDataSource(mFileName);
-                                    mPlayer.prepare();
-                                    mPlayer.start();
-                                } catch (IOException e) {
-                                    Log.e(LOG_TAG, "prepare() failed");
-                                }
-                            }
-                        });
+
+
+    private void requestRecordAudioPermission(){
+        Log.d(APP_LOG_TAG, LOG_TAG+"Request record audio permission!");
+
+        if (ActivityCompat.shouldShowRequestPermissionRationale(getActivity(),
+                Manifest.permission.RECORD_AUDIO)) {
+
+            final AlertDialog.Builder builder;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                builder = new AlertDialog.Builder(getActivity(), android.R.style.Theme_Material_Dialog_Alert);
+            } else {
+                builder = new AlertDialog.Builder(getActivity());
             }
-        });
+            builder.setTitle("Record Audio permissions needed")
+                    .setCancelable(false)
+                    .setMessage("Allow record permissions to start Walkie Talkie Audio Messages")
+                    .setPositiveButton("Sure", new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int which) {
+                            ActivityCompat.requestPermissions(getActivity(),
+                                    new String[]{Manifest.permission.RECORD_AUDIO},
+                                    MY_PERMISSIONS_REQUEST_RECORD_AUDIO);
+                            dialog.dismiss();
+                        }
+
+                    })
+                    .setNegativeButton("Nope", new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.dismiss();
+                        }
+                    })
+                    .show();
+
+        } else {
+            ActivityCompat.requestPermissions(getActivity(),
+                    new String[]{Manifest.permission.RECORD_AUDIO},
+                    MY_PERMISSIONS_REQUEST_RECORD_AUDIO);
+        }
+    }
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           @NonNull String permissions[], @NonNull  int[] grantResults) {
+        Log.i(APP_LOG_TAG, LOG_TAG+"permission results invoked");
+
+        switch (requestCode) {
+            case MY_PERMISSIONS_REQUEST_RECORD_AUDIO: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                } else {
+                    permission_denied_text.setVisibility(View.VISIBLE);
+                    permission_denied_text.setText("Record Audio Permissions Missing");
+
+                }
+            }
+        }
     }
 
 
-    private void setAudioMessagesListener(){
 
-    }
+
+
+
+
+
+
+
+
 
 
 
@@ -186,19 +235,6 @@ public class AudioConversationFragment extends Fragment {
             e.printStackTrace();
         }
     }
-
-
-    private void startTimer(){
-        new Handler().postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                Log.i(APP_LOG_TAG, LOG_TAG+ "Timeout, stopped recording");
-                stopRecording();
-            }
-        }, RECORD_TIMEOUT);
-    }
-
-
     private void uploadAudio(){
         File file = new File(mFileName);
         int size = (int) file.length();
@@ -232,9 +268,6 @@ public class AudioConversationFragment extends Fragment {
                         Log.i(APP_LOG_TAG, LOG_TAG+ "Oh Okay, it didn't work : "+e);
                     }
                 });
-
-
-
     }
 
 
