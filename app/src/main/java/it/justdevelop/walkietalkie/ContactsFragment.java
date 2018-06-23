@@ -1,12 +1,10 @@
 package it.justdevelop.walkietalkie;
 
 
-import android.content.ContentResolver;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.os.Bundle;
-import android.provider.ContactsContract;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
@@ -21,16 +19,21 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
+import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreException;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
 
-import it.justdevelop.walkietalkie.helpers.contact_adapter;
+import javax.annotation.Nullable;
+
+import it.justdevelop.walkietalkie.helpers.FirestoreHelper;
+import it.justdevelop.walkietalkie.helpers.SQLiteDatabaseHelper;
+import it.justdevelop.walkietalkie.helpers.profile_object;
 
 
 /**
@@ -46,23 +49,24 @@ public class ContactsFragment extends Fragment {
     View view;
     Context context;
     final int MY_PERMISSIONS_REQUEST_READ_CONTACTS = 7005;
-    String LOG = "ContactFetch";
-    List<contact_adapter> contactsAdapter = new ArrayList<>();
+    String LOG_TAG = " : ContactFetch :  ";
+    List<profile_object> contactsAdapter = new ArrayList<>();
     ListView contactList;
     FirebaseFirestore db;
-
+    DocumentReference backendContactListReference;
+    SQLiteDatabaseHelper helper;
+    private static final String APP_LOG_TAG = "WalkieTalkie2018";
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        // Inflate the layout for this fragment
         view = inflater.inflate(R.layout.fragment_contacts, container, false);
         initializeViews();
 
-        if(isContactsPermissionProvided()){
-            fetchContacts();
-        }else{
+        if(!isContactsPermissionProvided()){
             requestContactsPermission();
+        }else {
+            fetchContacts();
         }
 
         return view;
@@ -71,16 +75,42 @@ public class ContactsFragment extends Fragment {
     private void initializeViews(){
         context = getActivity().getApplicationContext();
         db = FirebaseFirestore.getInstance();
+
         contactList = view.findViewById(R.id.contactsList);
+        helper = new SQLiteDatabaseHelper(context);
+
+        final String my_phoneno = context.getSharedPreferences("wt_v1",Context.MODE_PRIVATE).getString("phoneno","");
+        if(!my_phoneno.equals("")){
+            setFirestoreDocumentListeners(my_phoneno);
+        }
+    }
+
+    private void setFirestoreDocumentListeners(String my_phoneno) {
+        backendContactListReference = FirebaseFirestore.getInstance().document("users/"+my_phoneno);
+        backendContactListReference.addSnapshotListener(getActivity(), new EventListener<DocumentSnapshot>() {
+            @Override
+            public void onEvent(@Nullable DocumentSnapshot documentSnapshot, @Nullable FirebaseFirestoreException e) {
+                if(documentSnapshot.exists() && documentSnapshot.get("list") != null){
+                    HashMap<String, Long> myContactList = (HashMap<String, Long>) documentSnapshot.get("list");
+
+                    for (String key : myContactList.keySet()) {
+                        helper.insertIntoUserProfiles(key, null, myContactList.get(key).intValue(), null);
+                    }
+                    fetchContacts();
+                }else {
+                    Log.e(APP_LOG_TAG, LOG_TAG+"Got a list document exception "+e);
+                }
+            }
+        });
     }
 
 
-    private boolean isContactsPermissionProvided(){
+        private boolean isContactsPermissionProvided(){
         return ContextCompat.checkSelfPermission(getActivity(), android.Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED;
     }
 
     private void requestContactsPermission(){
-        Log.d(LOG,"Request Contacts permission!");
+        Log.d(APP_LOG_TAG, LOG_TAG+"Request Contacts permission!");
         ActivityCompat.requestPermissions(getActivity(),
                 new String[]{android.Manifest.permission.READ_CONTACTS},
                 MY_PERMISSIONS_REQUEST_READ_CONTACTS);
@@ -93,6 +123,10 @@ public class ContactsFragment extends Fragment {
             case MY_PERMISSIONS_REQUEST_READ_CONTACTS: {
                 if (grantResults.length > 0
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    Log.i(APP_LOG_TAG, LOG_TAG+"contacts permission enabled");
+                    FirestoreHelper helper = new FirestoreHelper();
+                    helper.refreshContactStates(context);
+
                     fetchContacts();
                 } else {
                     Toast.makeText(context,"Sorry cannot proceed without contacts", Toast.LENGTH_LONG).show();
@@ -106,48 +140,40 @@ public class ContactsFragment extends Fragment {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     private void fetchContacts(){
-        ContentResolver contentResolver = context.getContentResolver();
-        Cursor cursor = contentResolver.query(ContactsContract.Contacts.CONTENT_URI, null, null, null, null);
-
+        contactsAdapter.clear();
+        Cursor cursor = helper.getAllContacts();
         while(cursor.moveToNext()){
-            String name = cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME));
-            String id = cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts._ID));
-
-            Cursor phoneCursor = contentResolver.query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null,
-                    ContactsContract.CommonDataKinds.Phone.CONTACT_ID+" = ? ", new String[]{id}, null
-                    );
-            String[] phonenos = new String[phoneCursor.getCount()];
-            int i = 0;
-            while(phoneCursor.moveToNext()){
-                String phoneno = phoneCursor.getString(phoneCursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER))
-                        .trim().replace(" ","").replace("-","").replace("(","")
-                        .replace(")","").replace("+","");
-                if(phoneno.length() > 10){
-                    phoneno = phoneno.substring(phoneno.length()-10, phoneno.length());
-                }
-                if(phoneno.length() != 10){
-                    continue;
-                }
-                phonenos[i++] = phoneno;
-            }
-            contactsAdapter.add(new contact_adapter(id, name, phonenos));
-            phoneCursor.close();
+            contactsAdapter.add(new profile_object(cursor.getString(0),
+                    cursor.getString(1), cursor.getInt(2), cursor.getString(3)));
         }
         cursor.close();
-
-
         displayList();
     }
 
 
     private void displayList(){
-        ArrayAdapter<contact_adapter> adapter = new myContactsAdapterClass();
+        Log.d(APP_LOG_TAG, LOG_TAG+"Adapter Count : "+contactsAdapter.size());
+        ArrayAdapter<profile_object> adapter = new myContactsAdapterClass();
         contactList.setAdapter(adapter);
     }
 
-    public class myContactsAdapterClass extends ArrayAdapter<contact_adapter> {
-        boolean isExistingUser = false;
+    public class myContactsAdapterClass extends ArrayAdapter<profile_object> {
         myContactsAdapterClass() {
             super(context, R.layout.profile_item, contactsAdapter);
         }
@@ -161,46 +187,48 @@ public class ContactsFragment extends Fragment {
                 LayoutInflater inflater = LayoutInflater.from(context);
                 itemView = inflater.inflate(R.layout.profile_item, parent, false);
             }
-            contact_adapter current = contactsAdapter.get(position);
+            profile_object current = contactsAdapter.get(position);
 
             TextView profile_name = itemView.findViewById(R.id.profile_username);
             profile_name.setText(current.getName());
 
-            final Button invite_request = itemView.findViewById(R.id.invite_request);
+            Button invite_request = itemView.findViewById(R.id.invite_request);
+            switch (current.getState()){
+                case 1:
+                    invite_request.setText("INVITE");
+                    invite_request.setBackground(ContextCompat.getDrawable(context, R.drawable.rounded_dark_red_button));
+                    break;
 
-            isExistingUser = false;
-            String[] numbers = current.getPhonenos();
+                case 2:
+                    invite_request.setText("INVITED");
+                    invite_request.setBackground(ContextCompat.getDrawable(context, R.drawable.rounded_red_button));
+                    break;
 
-            for(final String number : numbers){
-                if(number != null){
-                        db.collection("profiles")
-                                .document(number)
-                                .get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
-                            @Override
-                            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
-                                if (task.isSuccessful()) {
-                                    if(task.getResult().getData() == null){
-                                        Log.w(LOG, "phone not found : "+number);
-                                        invite_request.setText("INVITE");
-                                    }else{
-                                        invite_request.setText("REQUEST");
-                                        invite_request.setBackground(ContextCompat.getDrawable(context, R.drawable.rounded_green_button));
-                                        isExistingUser = true;
-                                        Log.w(LOG, "user found");
-                                        Log.i(LOG, "Data : "+task.getResult().getData());
-                                    }
-                                } else {
-                                    Log.w(LOG, "Error getting phone profiles.", task.getException());
-                                }
-                            }
-                        });
-                }
+                case 3:
+                    invite_request.setText("REQUEST");
+                    invite_request.setBackground(ContextCompat.getDrawable(context, R.drawable.rounded_orange_button));
+                    break;
+
+                case 4:
+                    invite_request.setText("REQUESTED");
+                    invite_request.setBackground(ContextCompat.getDrawable(context, R.drawable.rounded_yellow_button));
+                    break;
+
+                case 5:
+                    invite_request.setText("FRIEND");
+                    invite_request.setBackground(ContextCompat.getDrawable(context, R.drawable.rounded_green_button));
+                    break;
+
+                case 6:
+                    invite_request.setText("MUTED");
+                    invite_request.setBackground(ContextCompat.getDrawable(context, R.drawable.rounded_blue_button));
+                    break;
+
+                case 7:
+                    invite_request.setText("BLOCKED");
+                    invite_request.setBackground(ContextCompat.getDrawable(context, R.drawable.rounded_black_button));
+                    break;
             }
-
-
-
-
-
             return itemView;
         }
     }

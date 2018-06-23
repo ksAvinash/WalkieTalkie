@@ -8,6 +8,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
 
 public class SQLiteDatabaseHelper extends SQLiteOpenHelper {
+    private static final String APP_LOG_TAG = "WalkieTalkie2018";
 
     private static final String DATABASE_NAME = "walkieTalkie_dB";
     private static final String TABLE_CONTACT_PROFILES = "wt_profiles";
@@ -24,16 +25,16 @@ public class SQLiteDatabaseHelper extends SQLiteOpenHelper {
     private static final String GROUP_MEMBERS = "group_members";
     private static final String GROUP_PROFILE_PIC = "group_profile_pic";
 
-    String LOG = "DatabaseHelper";
+    String LOG = " : DatabaseHelper :  ";
 
     public SQLiteDatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, 1);
-        Log.i(LOG, "Creating database!");
+        Log.i(APP_LOG_TAG, LOG+"Creating database!");
     }
 
     @Override
     public void onCreate(SQLiteDatabase db) {
-        Log.i(LOG, "Creating tables!");
+        Log.i(APP_LOG_TAG, LOG+"Creating tables!");
 
         String create_contact_profile_table =
                 "create table "+TABLE_CONTACT_PROFILES+"("+USER_PHONE_NO+" text primary key, "+USER_NAME+
@@ -67,14 +68,18 @@ public class SQLiteDatabaseHelper extends SQLiteOpenHelper {
         int count = cursor.getInt(0);
         cursor.close();
         if(count > 0){
-            Log.i(LOG, "Updating entries for phoneno : "+phoneno);
+            Log.i(APP_LOG_TAG, LOG+ "Updating entries for phoneno : "+phoneno);
             ContentValues contentValues = new ContentValues();
-            contentValues.put(USER_NAME, name);
+            if(name != null)
+                contentValues.put(USER_NAME, name);
+
             contentValues.put(USER_STATE, state);
-            contentValues.put(USER_PROFILE_PIC, profile_pic);
+            if(profile_pic != null)
+                contentValues.put(USER_PROFILE_PIC, profile_pic);
+
             db.update(TABLE_CONTACT_PROFILES, contentValues, USER_PHONE_NO+" = "+phoneno, null);
         }else{
-            Log.i(LOG, "inserting entries for phoneno : "+phoneno);
+            Log.i(APP_LOG_TAG, LOG+"inserting entries for phoneno : "+phoneno);
             ContentValues contentValues = new ContentValues();
             contentValues.put(USER_PHONE_NO, phoneno);
             contentValues.put(USER_NAME, name);
@@ -87,7 +92,13 @@ public class SQLiteDatabaseHelper extends SQLiteOpenHelper {
 
     public Cursor getAllFriends(){
         SQLiteDatabase db = this.getWritableDatabase();
-        return db.rawQuery("select * from "+TABLE_CONTACT_PROFILES+" where "+USER_STATE+" = 4;",null);
+        return db.rawQuery("select * from "+TABLE_CONTACT_PROFILES+" where "+USER_STATE+" = 5;",null);
+    }
+
+    public Cursor getAllContacts(){
+        SQLiteDatabase db = this.getWritableDatabase();
+        return db.rawQuery("select * from "+TABLE_CONTACT_PROFILES+";",null);
+
     }
 
 

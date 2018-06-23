@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Typeface;
 import android.support.annotation.NonNull;
+import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -15,17 +16,26 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.AuthCredential;
+import com.google.firebase.auth.AuthResult;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.GoogleAuthProvider;
+import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
 
+import org.w3c.dom.Document;
+
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -33,13 +43,15 @@ public class UserSignup extends AppCompatActivity {
 
 
     TextView signup_email;
-    EditText signup_username, signup_phoneno;
+    EditText signup_phoneno;
     Button signup_button;
-    boolean isUsernameValid = false, isFetchingUsernames = false;
-    private String TAG = "Signup";
-    private Set<String> all_usernames = null;
+    boolean isFetchingPhoneNumbers = false;
+    private String LOG_TAG = " : signup :  ";
+    private static final String APP_LOG_TAG = "WalkieTalkie2018";
+
     Context context;
     FirebaseFirestore db = null;
+    CollectionReference collection_ref;
     ProgressDialog progressDialog;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,18 +60,16 @@ public class UserSignup extends AppCompatActivity {
 
         initializeViews();
 
-        fetchAllUsernames();
     }
 
 
 
     private void initializeViews(){
         context = getApplicationContext();
-        progressDialog = new ProgressDialog(this);
         db = FirebaseFirestore.getInstance();
+        collection_ref = FirebaseFirestore.getInstance().collection("users");
         signup_email = findViewById(R.id.signup_email);
         signup_phoneno = findViewById(R.id.signup_phoneno);
-        signup_username = findViewById(R.id.signup_username);
         signup_button = findViewById(R.id.signup_button);
 
         Bundle bundle = getIntent().getExtras();
@@ -71,106 +81,65 @@ public class UserSignup extends AppCompatActivity {
 
         Typeface type = Typeface.createFromAsset(getAssets(),"fonts/sans_pro.ttf");
         signup_phoneno.setTypeface(type);
-        signup_username.setTypeface(type);
         signup_button.setTypeface(type);
-
 
         signup_button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                String username = signup_username.getText().toString();
                 String phoneno = signup_phoneno.getText().toString();
                 String email = signup_email.getText().toString();
 
 
-                if(validateFields(username, phoneno) && validateUsername(username)){
-                    progressDialog.setMessage("Registering user");
+                if(validateFields(phoneno)){
+                    progressDialog = new ProgressDialog(UserSignup.this);
+                    progressDialog.setMessage("Checking our servers..");
                     progressDialog.setCancelable(false);
                     progressDialog.show();
-                    createNewUser(email, username, phoneno);
+                    validatePhoneNumber(email, phoneno);
                 }
             }
         });
 
     }
 
-    private void createNewUser(final String email, final String username, final String phoneno){
+    private void createNewUser(final String email, final String phoneno){
+        progressDialog.setMessage("Creating new profile");
+        progressDialog.setCancelable(false);
+        progressDialog.show();
 
         Map<String, Object> docData = new HashMap<>();
-        docData.put("phoneno", phoneno);
-        docData.put("username", username);
+        docData.put("email", email);
         docData.put("pro_user", false);
 
 
-        db.collection("users").document(email)
+        db.collection("users").document(phoneno)
                 .set(docData)
                 .addOnSuccessListener(new OnSuccessListener<Void>() {
                     @Override
                     public void onSuccess(Void aVoid) {
-                        Log.d(TAG, "New user document added");
-
-                        db.collection("quick_base").document("phonenos")
-                                .update(phoneno, email)
-                                .addOnSuccessListener(new OnSuccessListener<Void>() {
-                                    @Override
-                                    public void onSuccess(Void aVoid) {
-                                        Log.d(TAG, "phoneno added to quick_base document");
-
-                                        db.collection("quick_base").document("usernames")
-                                                .update(username, email)
-                                                .addOnSuccessListener(new OnSuccessListener<Void>() {
-                                                    @Override
-                                                    public void onSuccess(Void aVoid) {
-                                                        Log.d(TAG, "username added to quick_base document");
-
-                                                        if(progressDialog.isShowing())
-                                                            progressDialog.dismiss();
-                                                        saveUserDetails(email, username, phoneno);
-                                                    }
-                                                })
-                                                .addOnFailureListener(new OnFailureListener() {
-                                                    @Override
-                                                    public void onFailure(@NonNull Exception e) {
-                                                        Log.w(TAG, "Error adding username to quick_base : ", e);
-                                                        if(progressDialog.isShowing())
-                                                            progressDialog.dismiss();
-                                                    }
-                                                });
-
-
-                                    }
-                                })
-                                .addOnFailureListener(new OnFailureListener() {
-                                    @Override
-                                    public void onFailure(@NonNull Exception e) {
-                                        Log.w(TAG, "Error adding phoneno to quick_base : ", e);
-                                        if(progressDialog.isShowing())
-                                            progressDialog.dismiss();
-
-                                    }
-                                });
+                        db.collection("quick_base").document("references").update( email.replace(".","_"), phoneno);
+                        saveUserDetails(email, phoneno);
                     }
                 })
                 .addOnFailureListener(new OnFailureListener() {
                     @Override
                     public void onFailure(@NonNull Exception e) {
-                        Log.w(TAG, "Error adding user document", e);
+                        Log.w(APP_LOG_TAG, LOG_TAG+ "Error adding user document", e);
                         if(progressDialog.isShowing())
                             progressDialog.dismiss();
                     }
                 });
-
-
     }
 
 
 
-    private void saveUserDetails(String email, String username, String phoneno){
+    private void saveUserDetails(String email, String phoneno){
+        if(progressDialog.isShowing())
+            progressDialog.dismiss();
 
         SharedPreferences sharedPreferences = getSharedPreferences("wt_v1", MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPreferences.edit();
         editor.putString("email", email);
-        editor.putString("username", username);
         editor.putString("phoneno", phoneno);
         editor.apply();
 
@@ -186,14 +155,8 @@ public class UserSignup extends AppCompatActivity {
     }
 
 
-    private boolean validateFields(String username, String phoneno){
-        if(username.length() < 4 || username.length() > 16){
-            Toast.makeText(context, "username should be between 4 till 16 characters", Toast.LENGTH_SHORT).show();
-            return false;
-        }else if(!username.matches("[a-z0-9_]*")){
-            Toast.makeText(context, "username can contain '0-9', '_', 'a-z' characters", Toast.LENGTH_SHORT).show();
-            return false;
-        }else if(phoneno.length() != 10){
+    private boolean validateFields(String phoneno){
+        if(phoneno.length() != 10){
             Toast.makeText(context, "phone number should have 10 numbers", Toast.LENGTH_SHORT).show();
             return false;
         }else if(!phoneno.matches("[0-9]*")){
@@ -203,40 +166,25 @@ public class UserSignup extends AppCompatActivity {
         return true;
     }
 
-
-    private boolean validateUsername(String username){
-        if(all_usernames != null){
-            if(all_usernames.contains(username)){
-                Toast.makeText(context, "username exists, choose a new one", Toast.LENGTH_SHORT).show();
-                return false;
-            }else{
-                return true;
+    private void validatePhoneNumber(final String email, final String phoneno){
+        isFetchingPhoneNumbers = true;
+        db.collection("users").document(phoneno).get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
+            @Override
+            public void onSuccess(DocumentSnapshot documentSnapshot) {
+                if(documentSnapshot.exists()){
+                    if(progressDialog.isShowing())
+                        progressDialog.dismiss();
+                    Toast.makeText(context, "Phone number exists in database, choose a new one", Toast.LENGTH_SHORT).show();
+                }else {
+                    createNewUser(email, phoneno);
+                }
             }
-        }else{
-            if(!isFetchingUsernames)
-                fetchAllUsernames();
-        }
-        return false;
-    }
+        }).addOnFailureListener(new OnFailureListener() {
+            @Override
+            public void onFailure(@NonNull Exception e) {
 
-
-
-    private void fetchAllUsernames(){
-        isFetchingUsernames = true;
-        db.collection("quick_base").document("usernames")
-                .get()
-                .addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
-                    @Override
-                    public void onComplete(@NonNull Task<DocumentSnapshot> task) {
-                        isFetchingUsernames = false;
-                        if (task.isSuccessful()) {
-                            Log.i(TAG, "users : "+task.getResult().getData().keySet());
-                            all_usernames = task.getResult().getData().keySet();
-                        } else {
-                            Log.w(TAG, "Error getting documents.", task.getException());
-                        }
-                    }
-                });
+            }
+        });
     }
 
 

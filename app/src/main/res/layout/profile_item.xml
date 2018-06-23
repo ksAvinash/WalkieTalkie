@@ -20,6 +20,7 @@
         android:layout_toRightOf="@+id/profile_pic"
         android:layout_margin="25dp"
         android:id="@+id/profile_username"
+        android:textColor="#000"
         />
 
 

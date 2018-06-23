@@ -2,11 +2,13 @@ package it.justdevelop.walkietalkie.helpers;
 
 public class profile_object {
     private String phoneno, profile_pic, name;
+    private int state;
 
-    public profile_object(String phoneno, String name, String profile_pic) {
+    public profile_object(String phoneno, String name, int state, String profile_pic) {
         this.phoneno = phoneno;
         this.profile_pic = profile_pic;
         this.name = name;
+        this.state = state;
     }
 
     public void setPhoneno(String phoneno) {
@@ -21,6 +23,10 @@ public class profile_object {
         this.name = name;
     }
 
+    public void setState(int state) {
+        this.state = state;
+    }
+
     public String getPhoneno() {
 
         return phoneno;
@@ -32,5 +38,9 @@ public class profile_object {
 
     public String getName() {
         return name;
+    }
+
+    public int getState() {
+        return state;
     }
 }

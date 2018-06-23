@@ -1,17 +1,41 @@
 package it.justdevelop.walkietalkie;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.design.widget.BottomNavigationView;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.MenuItem;
 import android.widget.TextView;
+
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.EventListener;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreException;
+
+import java.util.HashMap;
+
+import javax.annotation.Nullable;
+
+import it.justdevelop.walkietalkie.helpers.SQLiteDatabaseHelper;
 
 public class MainActivity extends AppCompatActivity {
 
     private TextView mTextMessage;
+    DocumentReference user_states_reference;
+    SharedPreferences sharedPreferences;
+    SQLiteDatabaseHelper helper;
+
+
+    private static final String APP_LOG_TAG = "WalkieTalkie2018";
+    private static final String LOG_TAG = "MainActivity";
+
+
 
     private BottomNavigationView.OnNavigationItemSelectedListener mOnNavigationItemSelectedListener
             = new BottomNavigationView.OnNavigationItemSelectedListener() {
@@ -49,6 +73,10 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        initializeViews();
+
+        setFirestoreDocumentListeners();
+
         mTextMessage = (TextView) findViewById(R.id.message);
         BottomNavigationView navigation = (BottomNavigationView) findViewById(R.id.navigation);
         navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
@@ -58,9 +86,19 @@ public class MainActivity extends AppCompatActivity {
         FragmentManager fragmentManager = getSupportFragmentManager();
         FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
         fragmentTransaction.replace(R.id.fragment_container, chatFragment).commit();
+
+
+    }
+
+    private void initializeViews(){
+        sharedPreferences = getSharedPreferences("wk_v1", Context.MODE_PRIVATE);
+        helper = new SQLiteDatabaseHelper(this);
     }
 
 
+    private void setFirestoreDocumentListeners(){
+
+    }
 
 
 
